@@ -1,0 +1,68 @@
+# Virtual environment
+.venv/
+
+# Build output
+build/
+*.dmg
+
+# Windows binaries
+*.exe
+*.dll
+*.pyd
+
+# macOS
+.DS_Store
+__pycache__/
+*.pyc
+
+# Logs & temp
+logs/
+temp/
+*.log
+*.jsonl
+*.tmp
+*.bak
+
+# All profile data (sensitive + Windows caches)
+profile/
+
+# Sensitive
+hwid.txt
+local_pool_data.json
+accounts.json
+proxies.txt
+llm_key.txt
+llm_api.txt
+omo_key.txt
+remembered-activation.bin
+*.bin
+
+# Large binary/package data
+bundled-pool.json
+numpy.libs/
+PIL/
+cryptography/
+numpy/
+tcl/
+tk/
+
+# Package markers
+package.ready
+upgrade-*.ready
+
+# Selenium managers (platform-specific binaries)
+selenium/webdriver/common/macos/
+selenium/webdriver/common/linux/
+selenium/webdriver/common/windows/
+
+# Playwright
+playwright/driver/
+
+# Timezone data (installed via pip)
+tzdata/
+
+# Certifi CA bundle
+certifi/
+
+# Webview platform binaries
+webview/

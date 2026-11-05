@@ -1,0 +1,46 @@
+=============================================
+  AUTO-LIKE-CMT - HUONG DAN SU DUNG
+=============================================
+
+BUOC 1: Cai dat (chi can lam 1 lan)
+------------------------------------
+- Keo AutoLikeCmt.app vao thu muc Applications
+- Mo app lan dau - Terminal se tu dong cai dat
+- Cho cai dat xong (5-10 phut, can internet)
+
+BUOC 2: Nhap account
+---------------------
+- Mo Terminal goi: open ~/.auto-like-cmt/
+- Sua file: local_pool_data.json
+- Nhap account theo format:
+  {
+    "accounts": [
+      {
+        "id": "123456",
+        "username": "tenuser",
+        "login_user": "tenuser",
+        "password": "matkhau",
+        "email": "",
+        "mail_pass": "",
+        "totp_secret": "",
+        "cookie": "cookie_string_day_du",
+        "status": "live"
+      }
+    ]
+  }
+
+BUOC 3: Chay app
+-----------------
+- Mo AutoLikeCmt tu Applications
+- App se mo cua so giao dien
+
+YEU CAU HE THONG:
+- macOS (Apple Silicon hoac Intel)
+- Google Chrome da cai dat
+- Ket noi internet
+
+LUU Y:
+- Lan dau chay, macOS co the hoi
+  "cho phep chay khong?" -> Nhan "Open" hoac vao
+  System Settings > Privacy & Security > cho phep
+- Data luu tai: ~/.auto-like-cmt/

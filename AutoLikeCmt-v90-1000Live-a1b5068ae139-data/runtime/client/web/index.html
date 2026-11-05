@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+
+<html lang="vi">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Auto-Like-Cmt v95</title>
+
+  <script>
+
+    (() => {
+
+      let saved = null;
+
+      try { saved = localStorage.getItem('alc-theme'); } catch (_) {}
+
+      const theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+
+      document.documentElement.dataset.theme = theme;
+
+    })();
+
+  </script>
+
+  <link rel="stylesheet" href="app.css">
+
+
+
+  <style>
+
+    /* Fill available height while each stream keeps its own scrollbar. */
+
+    #tab-log .log-grid { height: calc(100vh - 165px); min-height: 460px; }
+
+    #tab-log .log-panel { height: 100%; min-height: 0; }
+
+    #logArea, #resultArea {
+
+      flex: 1 1 0; height: auto; min-height: 0; max-height: none;
+
+      overflow-y: scroll !important; overflow-x: hidden; scrollbar-gutter: stable;
+
+    }
+
+    @media (max-width: 900px) {
+
+      #tab-log .log-grid { height: auto; }
+
+      #tab-log .log-panel { height: max(460px, 70vh); }
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+
+
+  <!-- ═══ LOGIN VIEW ═══════════════════════════════════════════════════════ -->
+
+  <div id="loginView">
+
+    <div class="login-shell">
+
+      <button type="button" class="theme-toggle login-theme-toggle" aria-label="Đổi giao diện">Sáng</button>
+
+      <div class="login-brand">
+
+        <span class="mark">L</span>
+
+        <div>
+
+          <span class="eyebrow">License workspace</span>
+
+          <h1>Auto-Like-Cmt</h1>
+
+        </div>
+
+      </div>
+
+      <p class="login-copy">Kích hoạt thiết bị để truy cập workspace tự động hóa TikTok.</p>
+
+      <div class="field-block">
+
+        <label for="keyInput">License key</label>
+
+        <input id="keyInput" class="input mono" type="text" placeholder="TTK-XXXX-XXXX-XXXX-XXXX" autocomplete="off">
+
+        <div id="loginError" class="help login-error"></div>
+
+      </div>
+
+      <button id="loginBtn" class="act primary-action">Kích hoạt</button>
+
+      <p id="statusLine" class="help login-status"></p>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- ═══ MAIN VIEW ════════════════════════════════════════════════════════ -->
+
+  <div id="mainView" class="hidden">
+
+
+
+    <header class="top">
+
+      <div class="brand-block">
+
+        <div class="brand-line">
+
+          <span class="mark">L</span>
+
+          <div class="brand-copy">
+
+            <h1>Auto-Like-Cmt</h1>
+
+            <div class="brand-badges">
+
+              <span id="verBadge" class="ver-badge">…</span>
+
+              <span id="editionBadge" class="ver-badge edition">VIP</span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="runtime-line">
+
+          <span id="poolLine">Pool: đang tải</span>
+
+          <span id="solverBadge" class="solver-badge">Captcha: kiểm tra…</span>
+
+        </div>
+
+      </div>
+
+      <div class="top-right">
+
+        <button type="button" class="theme-toggle btn-soft" aria-label="Đổi giao diện">Sáng</button>
+
+        <span id="syncBadge">chưa đồng bộ</span>
+
+        <button id="onTopBtn" class="btn-soft">Ghim</button>
+
+        <button id="refreshPoolBtn" class="btn-soft">Tải pool</button>
+
+        <button type="button" onclick="showLicenseEntry()" class="btn-soft">Nhập key</button>
+        <button onclick="doLogout()" class="btn-ghost">Đăng xuất</button>
+
+      </div>
+
+    </header>
+
+
+
+    <nav class="tabbar" aria-label="Khu vực làm việc">
+
+      <button class="tabtab active" data-tab="buff">Buff</button>
+
+      <button class="tabtab" data-tab="accs">Tài khoản</button>
+
+      <button id="tabCommentBtn" class="tabtab" data-tab="cmt">Comment</button>
+
+      <button id="tabCmtAccBtn" class="tabtab" data-tab="cmtacc">Acc CMT</button>
+
+      <button id="tabProxyBtn" class="tabtab" data-tab="proxy">Proxy</button>
+
+      <button class="tabtab" data-tab="log">Nhật ký</button>
+
+    </nav>
+
+
+
+    <div id="tab-accs" class="tabpane hidden account-pane">
+
+      <div id="accStats" class="stat-row stat-row-five">
+
+        <div class="stat"><span class="stat-label">Tổng</span><span class="stat-value mono" id="stTotal">-</span></div>
+
+        <div class="stat"><span class="stat-label">Live</span><span class="stat-value mono ok" id="stLive">-</span></div>
+
+        <div class="stat"><span class="stat-label">Die</span><span class="stat-value mono danger" id="stDie">-</span></div>
+
+        <div class="stat"><span class="stat-label">Banned</span><span class="stat-value mono warn" id="stBanned">-</span></div>
+
+        <div class="stat"><span class="stat-label">Chưa rõ</span><span class="stat-value mono" id="stUnknown">-</span></div>
+
+      </div>
+
+
+
+      <div class="account-workspace">
+
+        <section id="accListPanel" class="tool-panel list-panel">
+
+          <div class="tool-head list-toolbar">
+
+            <div>
+
+              <span class="eyebrow">Pool chính</span>
+
+              <span class="tool-title">Danh sách tài khoản <span class="tool-count" id="accListCount">0</span></span>
+
+              <span class="tool-foot">Đã chọn <b id="selectedCount">0</b></span>
+
+            </div>
+
+            <input id="accSearch" class="input" type="search" placeholder="Tìm username, ID, trạng thái" autocomplete="off">
+
+          </div>
+
+          <div class="chip-row filter-row" role="group" aria-label="Chọn theo trạng thái">
+
+            <button type="button" class="chip" onclick="accSelectFilter('all')">Tất cả</button>
+
+            <button type="button" class="chip" onclick="accSelectFilter('live')">Live</button>
+
+            <button type="button" class="chip" onclick="accSelectFilter('die')">Die</button>
+
+            <button type="button" class="chip" onclick="accSelectFilter('unknown')">Unknown</button>
+
+            <button type="button" class="chip" onclick="accSelectFilter('banned')">Banned</button>
+
+            <button type="button" class="chip" onclick="accSelectFilter('none')">Bỏ chọn</button>
+
+            <button id="accListRefresh" type="button" class="chip utility-chip">Làm mới</button>
+
+          </div>
+
+          <div id="accListBody" class="acc-list"></div>
+
+
+
+          <div class="acc-actions">
+
+            <div class="acc-act-group">
+
+              <span class="acc-act-label">Check live</span>
+
+              <button id="liveCheckBtn" class="chip chip-accent" type="button">Bắt đầu check</button>
+
+              <button id="livePauseBtn" class="chip" disabled type="button">Tạm dừng</button>
+
+              <button id="liveStopBtn" class="chip chip-danger" disabled type="button">Dừng</button>
+
+              <label class="acc-inline">
+
+                <input id="checkVisibleInput" type="checkbox" checked>
+
+                Hiện browser
+
+              </label>
+
+              <label class="acc-inline compact-input">
+
+                Luồng
+
+                <input id="checkThreadsInput" class="input mono" type="number" min="1" max="12" value="8">
+
+              </label>
+
+            </div>
+
+            <div class="acc-act-group danger-zone">
+
+              <span class="acc-act-label">Dọn pool</span>
+
+              <button id="deleteSelectedBtn" type="button" class="chip chip-danger">Xóa đã chọn</button>
+
+              <button id="deleteDeadBtn" type="button" class="chip chip-danger">Xóa Die</button>
+
+              <button id="deleteUnknownBtn" type="button" class="chip chip-danger">Xóa Unknown</button>
+
+              <button id="deleteBannedBtn" type="button" class="chip chip-warn">Xóa Banned</button>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+
+        <aside id="importPanel" class="tool-panel import-inline">
+
+          <div class="panel-heading">
+
+            <span class="eyebrow">Credentials</span>
+
+            <span class="tool-title">Nạp tài khoản</span>
+
+            <p>Chọn đúng định dạng trước khi dán dữ liệu.</p>
+
+          </div>
+
+          <div class="field-block">
+
+            <label for="importAccType">Loại tài khoản</label>
+
+            <select id="importAccType" class="input">
+
+              <option value="email">Mail + mật khẩu TikTok + OTP Mail.tm</option>
+
+              <option value="totp">Username + password + mã 2FA</option>
+
+            </select>
+
+          </div>
+
+          <textarea id="importAccText" class="input mono import-area" rows="8" placeholder="Email: user|mật khẩu TikTok|mail|mật khẩu mail&#10;&#10;Mã 2FA: username|password|2facode&#10;&#10;Có thể dán header ở dòng đầu."></textarea>
+
+          <button id="importAccSend" class="chip chip-accent full-action" type="button">Nạp vào pool</button>
+
+          <div class="help" id="importAccStatus"></div>
+
+        </aside>
+
+      </div>
+
+    </div>
+
+
+
+    <!-- Tab: Buff, cấu hình chạy -->
+
+    <div id="tab-buff" class="tabpane">
+
+      <div class="form-panel buff-panel">
+
+        <div class="panel-intro">
+
+          <div>
+
+            <span class="eyebrow">Automation run</span>
+
+            <h2>Cấu hình lượt chạy</h2>
+
+            <p>Chọn mục tiêu, phương thức và giới hạn trước khi bắt đầu.</p>
+
+          </div>
+
+          <span class="context-label">Pool hiện tại</span>
+
+        </div>
+
+
+
+        <div class="buff-layout">
+
+          <section class="buff-primary">
+
+            <div class="field-block">
+
+              <label for="linksInput">Link TikTok</label>
+
+              <textarea id="linksInput" class="input links-area" rows="4" placeholder="https://vt.tiktok.com/...&#10;Mỗi dòng một link"></textarea>
+
+              <div class="help">Link có <span class="mono">?comment_id=...</span> sẽ xử lý nhanh hơn.</div>
+
+            </div>
+
+
+
+            <div class="grid-2 field-block">
+
+              <div>
+
+                <label for="likeTypeInput">Loại tim</label>
+
+                <select id="likeTypeInput" class="input">
+
+                  <option value="comment">Tim comment</option>
+
+                  <option value="video">Tim video</option>
+
+                  <option value="both">Tim cả comment + video</option>
+
+                </select>
+
+              </div>
+
+              <div id="findModeBlock">
+
+                <label for="findModeInput">Chế độ tìm</label>
+
+                <select id="findModeInput" class="input">
+
+                  <option value="all">Quét tất cả comment</option>
+
+                  <option value="first">Chỉ comment đầu tiên</option>
+
+                </select>
+
+              </div>
+
+            </div>
+
+
+
+            <div id="targetBlock" class="field-block">
+
+              <label for="targetInput">User comment theo từng link</label>
+
+              <textarea id="targetInput" class="input" rows="3"
+
+                        placeholder="@user_link_1&#10;@user_link_2&#10;@user_link_3"></textarea>
+
+              <div class="help">Tối đa 3 dòng ánh xạ theo thứ tự với 3 link. Một dòng sẽ dùng chung cho mọi link.</div>
+
+              <div class="chip-row cache-actions">
+
+                <button id="autoCmtCacheLoadBtn" class="chip" type="button">Nạp cache Auto Cmt</button>
+
+                <label class="chip file-chip">Import JSON
+
+                  <input id="autoCmtCacheFile" type="file" accept=".json,application/json">
+
+                </label>
+
+                <span id="autoCmtCacheStatus" class="help"></span>
+
+              </div>
+
+            </div>
+
+          </section>
+
+
+
+          <aside class="buff-controls">
+
+            <div class="section-heading">Hiệu suất</div>
+
+            <div class="grid-2 field-block">
+
+              <div>
+
+                <label for="threadsInput">Số trình duyệt</label>
+
+                <input id="threadsInput" class="input mono" type="number" min="1" max="30" value="10">
+
+                <div class="chip-row thread-hints" id="threadHintRow"></div>
+
+                <div class="help" id="threadHintHelp">Đang đo RAM/CPU máy này...</div>
+
+              </div>
+
+              <div>
+
+                <label for="targetCountInput">Số lượng cần đạt</label>
+
+                <input id="targetCountInput" class="input mono" type="number" min="0" placeholder="0">
+
+                <div class="help">0 hoặc để trống: chạy hết tài khoản.</div>
+
+              </div>
+
+            </div>
+
+
+
+            <div class="field-block" id="machineProxyBlock">
+
+              <label for="machineProxyCount">Số proxy cho máy này</label>
+
+              <input id="machineProxyCount" class="input mono" type="number" min="1" value="3">
+
+              <div class="chip-row thread-hints">
+
+                <button type="button" class="chip" data-machine-proxies="2">2 PRX</button>
+
+                <button type="button" class="chip" data-machine-proxies="3">3 PRX</button>
+
+                <button type="button" class="chip" id="saveMachineProxyBtn">Lưu cho máy này</button>
+
+              </div>
+
+              <div class="help" id="machineProxyHelp">Nhập số proxy bạn muốn dùng rồi bấm Lưu. Giữ lựa chọn qua các lần Bắt đầu; 2 PRX và 3 PRX chỉ là chọn nhanh.</div>
+
+              <div class="help" id="machineProxyStatus" role="status">Đang nạp cấu hình máy...</div>
+
+            </div>
+
+            <div class="section-heading">Phương thức</div>
+
+            <div class="option-stack">
+              <label class="opt-row"><input id="randomAccountsInput" type="checkbox"><span class="opt-body"><span class="opt-title">Xáo trộn thứ tự acc</span><span class="opt-desc">Đổi thứ tự mỗi lượt chạy, không lặp acc.</span></span></label>
+
+              <label class="opt-row">
+
+                <input id="autocapInput" type="checkbox" checked>
+
+                <span class="opt-body">
+
+                  <span class="opt-title">Tự giải captcha</span>
+
+                  <span class="opt-desc">Gặp captcha sẽ dùng bộ giải được admin cấu hình.</span>
+
+                </span>
+
+              </label>
+
+              <label id="apiLikeBlock" class="opt-row">
+
+                <input id="apiLikeInput" type="checkbox" checked>
+
+                <span class="opt-body">
+
+                  <span class="opt-title">Tim comment qua CID/API</span>
+
+                  <span class="opt-desc">Scout lấy CID, worker gửi request trực tiếp.</span>
+
+                </span>
+
+              </label>
+
+              <label class="opt-row">
+
+                <input id="headlessInput" type="checkbox" checked>
+
+                <span class="opt-body">
+
+                  <span class="opt-title">Chạy nền</span>
+
+                  <span class="opt-desc">Ẩn cửa sổ browser trong lúc chạy.</span>
+
+                </span>
+
+              </label>
+
+              <label class="opt-row">
+
+                <input id="debugInput" type="checkbox">
+
+                <span class="opt-body">
+
+                  <span class="opt-title">Debug với DevTools</span>
+
+                  <span class="opt-desc">Ép một account và giữ browser sau lượt chạy.</span>
+
+                </span>
+
+              </label>
+
+            </div>
+
+          </aside>
+
+        </div>
+
+
+
+        <div class="run-command">
+
+          <div id="progressBox" class="hidden">
+
+            <div class="prog-head">
+
+              <span class="lbl">Tiến độ</span>
+
+              <span class="num" id="progressText">Đã tim: <b>0</b></span>
+
+            </div>
+
+            <div class="prog-track"><div id="progressBar" style="width:0%"></div></div>
+
+          </div>
+
+          <div class="btn-row">
+
+            <button id="apiCaptureBtn" class="act secondary-action" type="button"
+
+                    title="Mở một tài khoản và chờ thao tác tim thủ công">
+
+              Bắt request API
+
+            </button>
+
+            <button id="startBtn" class="act primary-action">Bắt đầu</button>
+
+            <button id="pauseBtn" class="act secondary-action" disabled>Tạm dừng</button>
+
+            <button id="stopBtn" class="act danger-action" disabled>Dừng</button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+
+    <div id="tab-cmt" class="tabpane hidden">
+
+      <div id="cmtRunPanel" class="tool-panel cmt-run-panel">
+
+        <div class="panel-intro cmt-intro">
+
+          <div>
+
+            <span class="eyebrow">VIP workflow</span>
+
+            <h2>Chạy comment</h2>
+
+            <p>Chuẩn bị dữ liệu theo video, đặt nhịp worker rồi chạy toàn bộ account đã chọn.</p>
+
+          </div>
+
+          <span class="context-label">Auto Comment</span>
+
+        </div>
+
+
+
+        <div class="cmt-primary-grid">
+
+          <section class="cmt-block cmt-compose">
+
+            <div class="cmt-block-head">
+
+              <span class="cmt-step">01</span>
+
+              <div>
+
+                <h3>Nội dung theo video</h3>
+
+                <p>Mỗi dòng link đi cùng một dòng mã tương ứng.</p>
+
+              </div>
+
+              <label class="chip file-chip cmt-import">Import yêu cầu
+
+                <input id="missionCmtImportFile" type="file" accept=".json,application/json">
+
+              </label>
+
+            </div>
+
+            <div id="missionCmtImportStatus" class="help mission-import-status"></div>
+
+            <div class="cmt-data-grid">
+
+              <div class="field-block">
+
+                <label for="cmtLinksInput">Link video</label>
+
+                <textarea id="cmtLinksInput" class="input" rows="5" placeholder="Mỗi dòng một link TikTok"></textarea>
+
+              </div>
+
+              <div class="field-block">
+
+                <label for="shopCodesInput">Mã theo từng video</label>
+
+                <textarea id="shopCodesInput" class="input mono" rows="5" placeholder="Dòng 1: XYZ-XYZ-XYZ, ABC-ABC-ABC&#10;Dòng 2: DEF-DEF-DEF"></textarea>
+
+                <div class="help">Một dòng có thể chứa nhiều mã, phân cách bằng dấu phẩy.</div>
+
+              </div>
+
+            </div>
+
+            <div class="bio-section">
+
+              <button id="cmtBioToggle" class="chip" type="button"
+
+                      aria-expanded="false">Thêm dữ liệu bio</button>
+
+              <div id="cmtBioFields" class="hidden">
+
+                <div class="grid-2">
+
+                  <div>
+
+                    <label for="cmtBioUsername">Username bio</label>
+
+                    <input id="cmtBioUsername" class="input" type="text" placeholder="Ngọc Vi">
+
+                    <div class="help">Không cần nhập ký tự @.</div>
+
+                  </div>
+
+                  <div>
+
+                    <label for="shopNumbersInput">Number theo từng video</label>
+
+                    <textarea id="shopNumbersInput" class="input mono" rows="3"
+
+                              placeholder="Dòng 1: 1, 3&#10;Dòng 2: 5"></textarea>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </section>
+
+
+
+          <aside class="cmt-block cmt-worker">
+
+            <div class="cmt-block-head">
+
+              <span class="cmt-step">02</span>
+
+              <div>
+
+                <h3>Nhịp worker</h3>
+
+                <p>Mỗi comment gốc: gửi 1 icon trước, rồi 3–4 tin nhắn.</p>
+
+              </div>
+
+            </div>
+
+            <div class="worker-fields">
+
+              <label class="compact-field">Tin nhắn tối thiểu
+
+                <input id="repliesPerRootMin" class="input mono" type="number" min="1" max="20" value="3">
+
+              </label>
+
+              <label class="compact-field">Tin nhắn tối đa
+
+                <input id="repliesPerRootMax" class="input mono" type="number" min="1" max="20" value="4">
+
+              </label>
+
+              <label class="compact-field">Số luồng
+
+                <input id="cmtThreadsInput" class="input mono" type="number" min="1" max="16" value="2">
+
+              </label>
+
+            </div>
+
+            <div class="option-stack compact-options">
+
+              <label class="opt-row">
+
+                <input id="cmtHeadlessInput" type="checkbox" checked>
+
+                <span class="opt-body">
+
+                  <span class="opt-title">Chạy nền</span>
+
+                  <span class="opt-desc">Ẩn browser khi đang đăng comment.</span>
+
+                </span>
+
+              </label>
+
+              <label class="opt-row">
+
+                <input id="cmtDebugInput" type="checkbox">
+
+                <span class="opt-body">
+
+                  <span class="opt-title">Debug hiển thị comment</span>
+
+                  <span class="opt-desc">Một account, mở DevTools và đăng thêm 1 câu đối chứng “Đồ đẹp quá”.</span>
+
+                </span>
+
+              </label>
+
+            </div>
+
+            <p class="worker-note">Debug tự ép về một luồng và tắt chạy nền.</p>
+
+          </aside>
+
+        </div>
+
+
+
+        <section class="cmt-template-studio">
+
+          <div class="studio-head">
+
+            <div class="cmt-block-head">
+
+              <span class="cmt-step">03</span>
+
+              <div>
+
+                <h3>Nhận diện và câu trả lời</h3>
+
+                <p>Mỗi mẫu là một text box độc lập; không tách theo xuống dòng.</p>
+
+              </div>
+
+            </div>
+
+            <div class="studio-actions">
+
+              <button id="addCmtTemplateBtn" class="chip" type="button">Thêm mẫu</button>
+
+              <button id="cmtSaveCfgBtn" class="chip chip-accent" type="button">Lưu cấu hình</button>
+
+              <button id="cmtExportTargetsBtn" class="chip" type="button">Xuất JSON Auto tim</button>
+
+            </div>
+
+          </div>
+
+          <div class="template-studio-grid">
+
+            <div class="phrase-editor">
+
+              <label for="cmtExtraPhrases">Cụm tìm comment gốc</label>
+
+              <textarea id="cmtExtraPhrases" class="input mono" rows="7" placeholder="ib giá&#10;xin giá&#10;bao nhiêu"></textarea>
+
+              <div class="help">Một dòng là một cụm nhận diện.</div>
+
+            </div>
+
+            <div class="template-editor">
+
+              <div id="cmtTemplateList" class="template-list"></div>
+
+              <div class="help">Xuống dòng và Unicode bên trong mỗi ô vẫn thuộc cùng một comment.</div>
+
+            </div>
+
+          </div>
+
+          <div id="cmtExportTargetsStatus" class="help studio-status"></div>
+
+        </section>
+
+
+
+        <div class="run-command cmt-run-command">
+
+          <div class="run-copy">
+
+            <span>Sẵn sàng chạy</span>
+
+            <small>Kiểm tra link, mã và template trước khi bắt đầu.</small>
+
+          </div>
+
+          <div class="btn-row">
+
+            <button id="cmtStartBtn" class="act primary-action">Bắt đầu comment</button>
+
+            <button id="cmtPauseBtn" class="act secondary-action" disabled>Tạm dừng</button>
+
+            <button id="cmtStopBtn" class="act danger-action" disabled>Dừng</button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+
+    <div id="tab-cmtacc" class="tabpane hidden account-pane">
+
+      <div id="cmtStats" class="stat-row">
+
+        <div class="stat"><span class="stat-label">Tổng</span><span class="stat-value mono" id="cmtStTotal">-</span></div>
+
+        <div class="stat"><span class="stat-label">Live</span><span class="stat-value mono ok" id="cmtStLive">-</span></div>
+
+        <div class="stat"><span class="stat-label">Die</span><span class="stat-value mono danger" id="cmtStDie">-</span></div>
+
+        <div class="stat"><span class="stat-label">Chưa rõ</span><span class="stat-value mono" id="cmtStUnknown">-</span></div>
+
+      </div>
+
+
+
+      <div class="account-workspace">
+
+        <section id="cmtListPanel" class="tool-panel list-panel">
+
+          <div class="tool-head list-toolbar">
+
+            <div>
+
+              <span class="eyebrow">VIP pool</span>
+
+              <span class="tool-title">Account comment <span class="tool-count" id="cmtListCount">0</span></span>
+
+              <span class="tool-foot">Đã chọn <b id="cmtSelectedCount">0</b></span>
+
+            </div>
+
+            <div class="chip-row filter-row">
+
+              <button type="button" class="chip" id="cmtSelAll">Tất cả</button>
+
+              <button type="button" class="chip" id="cmtSelLive">Live</button>
+
+              <button type="button" class="chip" id="cmtSelDie">Die</button>
+
+              <button type="button" class="chip" id="cmtSelUnknown">Unknown</button>
+
+              <button type="button" class="chip" id="cmtSelNone">Bỏ chọn</button>
+
+              <button id="cmtRefreshBtn" type="button" class="chip utility-chip">Làm mới</button>
+
+            </div>
+
+          </div>
+
+          <div id="cmtAccList" class="acc-list"></div>
+
+          <div class="acc-actions">
+
+            <div class="acc-act-group">
+
+              <span class="acc-act-label">Check live</span>
+
+              <button id="cmtLiveBtn" class="chip chip-accent" type="button">Bắt đầu check</button>
+
+              <button id="cmtLivePauseBtn" class="chip" type="button" disabled>Tạm dừng</button>
+
+              <button id="cmtLiveStopBtn" class="chip chip-danger" type="button" disabled>Dừng</button>
+
+              <label class="acc-inline">
+
+                <input id="cmtCheckVisible" type="checkbox" checked> Hiện browser
+
+              </label>
+
+              <label class="acc-inline compact-input">Luồng
+
+                <input id="cmtCheckThreads" class="input mono" type="number" min="1" max="12" value="8">
+
+              </label>
+
+            </div>
+
+            <div class="acc-act-group">
+
+              <span class="acc-act-label">Hồ sơ</span>
+
+              <button id="cmtPrivateBtn" class="chip" type="button">Khóa account</button>
+
+              <button id="cmtAvatarBtn" class="chip" type="button">Auto avatar</button>
+
+              <button id="cmtProfileStopBtn" class="chip chip-danger" type="button" disabled>Dừng</button>
+
+              <label class="acc-inline">
+
+                <input id="cmtProfileVisible" type="checkbox"> Hiện browser
+
+              </label>
+
+              <label class="acc-inline">
+
+                <input id="cmtAvatarDebug" type="checkbox"> Debug avatar
+
+              </label>
+
+            </div>
+
+            <div class="acc-act-group danger-zone">
+
+              <span class="acc-act-label">Dọn pool</span>
+
+              <button id="cmtDeleteBtn" type="button" class="chip chip-danger">Xóa đã chọn</button>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+
+        <aside class="tool-panel import-inline">
+
+          <div class="panel-heading">
+
+            <span class="eyebrow">Credentials</span>
+
+            <span class="tool-title">Nạp account comment</span>
+
+            <p>Pool riêng cho workflow Auto Comment.</p>
+
+          </div>
+
+          <div class="field-block">
+
+            <label for="cmtImportType">Loại tài khoản</label>
+
+            <select id="cmtImportType" class="input">
+
+              <option value="email">Mail + mật khẩu TikTok + OTP Mail.tm</option>
+
+              <option value="totp">Username + password + mã 2FA</option>
+
+            </select>
+
+          </div>
+
+          <textarea id="cmtImportText" class="input mono import-area" rows="8" placeholder="Email: user|mật khẩu TikTok|mail|mật khẩu mail&#10;&#10;Mã 2FA: username|password|2facode"></textarea>
+
+          <button id="cmtImportBtn" class="chip chip-accent full-action" type="button">Nạp vào pool</button>
+
+          <div class="help" id="cmtAccStatus"></div>
+
+        </aside>
+
+      </div>
+
+    </div>
+
+
+
+
+
+
+
+
+
+    <div id="tab-proxy" class="tabpane hidden proxy-pane">
+
+      <section class="tool-panel proxy-workspace">
+
+        <div class="panel-intro proxy-intro">
+
+          <div>
+
+            <span class="eyebrow">Exclusive batch network</span>
+
+            <h2>Proxy SOCKS5 cấp riêng theo batch</h2>
+
+            <p>Server giữ riêng từng ProxySach cho một client; đóng hết browser sau 100 account rồi đổi IP trước batch kế tiếp.</p>
+
+          </div>
+
+          <span class="context-label" id="proxyVipState">Đang tải</span>
+
+        </div>
+
+
+
+        <div class="proxy-metrics">
+
+          <div><span>Tổng đang dùng</span><strong id="proxyActiveCount">0</strong></div>
+
+          <div><span>ProxySach khả dụng</span><strong id="proxyConfiguredCount">0</strong></div>
+
+          <div><span>Pool tự thêm</span><strong id="proxyManualCount">0</strong></div>
+
+          <div><span>Cấp ProxySach</span><strong>Tự động theo batch</strong></div>
+
+        </div>
+
+
+
+        <div class="proxy-console">
+
+          <section class="proxy-endpoints">
+
+            <div class="section-heading-row">
+
+              <div>
+
+                <div class="section-heading">Endpoint của batch hiện tại</div>
+
+                <div class="help">Credential chỉ cấp cho client đang giữ lease và chỉ nằm trong bộ nhớ bot.</div>
+
+              </div>
+
+              <div class="proxy-toolbar-actions">
+
+                <button id="proxyCheckBtn" class="chip utility-chip" type="button">Test toàn bộ proxy</button>
+
+                <button id="proxyDelDeadBtn" class="chip chip-danger" type="button">Xóa proxy lỗi</button>
+
+                <button id="proxyDelAllBtn" class="chip chip-danger" type="button">Xóa tất cả</button>
+
+                <button id="proxyRefreshBtn" class="chip" type="button">Làm mới</button>
+
+              </div>
+
+            </div>
+
+            <div id="proxyEndpointList" class="proxy-endpoint-list"></div>
+
+            <section class="proxy-manual-panel">
+
+              <div>
+
+                <span class="section-heading">Thêm proxy vào pool chung</span>
+
+                <p class="help">Mọi client có thể tự thêm HTTP hoặc SOCKS5; mỗi dòng một proxy.</p>
+
+              </div>
+
+              <textarea id="proxyAddInput" class="input mono" rows="3" spellcheck="false" placeholder="ip:port&#10;ip:port:user:pass&#10;socks5://user:pass@ip:port"></textarea>
+
+              <div class="proxy-manual-actions">
+
+                <button id="proxyAddBtn" class="chip chip-accent" type="button">Thêm vào pool</button>
+
+                <span id="proxyTestStatus" class="help">Test chung cả ProxySach và proxy tự thêm.</span>
+
+              </div>
+
+            </section>
+
+          </section>
+
+
+
+          <aside class="proxy-rotation">
+
+            <span class="eyebrow" id="proxyRotationEyebrow">Batch lease</span>
+
+            <h3 id="proxyRotationTitle">Mỗi client giữ IP riêng</h3>
+
+            <p id="proxyRotationCopy">Server cấp tối đa 2 ProxySach độc quyền trước khi tạo browser. Batch khác không thể xoay hoặc dùng cùng slot.</p>
+
+            <div class="proxy-next">
+
+              <span>Thời điểm đổi IP</span>
+
+              <strong id="proxyNextChange">Sau mỗi batch 100 acc</strong>
+
+            </div>
+
+            <div id="proxyActionStatus" class="help"></div>
+
+          </aside>
+
+        </div>
+
+      </section>
+
+    </div>
+
+
+
+    <div id="tab-log" class="tabpane hidden">
+
+      <div class="log-grid">
+
+        <section class="log-panel log-primary">
+
+          <div class="log-head">
+
+            <div>
+
+              <span class="eyebrow">Runtime stream</span>
+
+              <h2>Nhật ký hoạt động</h2>
+
+            </div>
+
+            <div class="log-actions">
+
+              <input id="logSearch" class="input" type="search" placeholder="Tìm trong log">
+
+              <button onclick="copyLog('logArea')">Sao chép</button>
+
+              <button onclick="clearLog()">Xóa</button>
+
+            </div>
+
+          </div>
+
+          <div id="logArea" class="log-tall"></div>
+
+        </section>
+
+
+
+        <section class="log-panel log-results">
+
+          <div class="log-head result-head">
+
+            <div>
+
+              <span class="eyebrow">Theo từng tài khoản</span>
+
+              <h2>Kết quả thực hiện</h2>
+
+            </div>
+
+            <div class="log-actions">
+
+              <button onclick="copyLog('resultArea')">Sao chép</button>
+
+              <button onclick="clearResult()">Xóa</button>
+
+            </div>
+
+          </div>
+
+          <div class="result-overview" aria-label="Tóm tắt kết quả">
+
+            <div><span>Đã ghi nhận</span><strong id="resultTotal" class="mono">0</strong></div>
+
+            <div><span>Hoàn tất</span><strong id="resultOk" class="mono ok">0</strong></div>
+
+            <div><span>Cần xem</span><strong id="resultAttention" class="mono danger">0</strong></div>
+
+          </div>
+
+          <div class="result-toolbar">
+
+            <div class="result-filters" role="group" aria-label="Lọc kết quả">
+
+              <button class="result-filter active" type="button" data-result-filter="all">Tất cả</button>
+
+              <button class="result-filter" type="button" data-result-filter="ok">Hoàn tất</button>
+
+              <button class="result-filter" type="button" data-result-filter="attention">Cần xem</button>
+
+            </div>
+
+            <button id="resultFollowBtn" class="result-follow active" type="button">
+
+              <span class="result-live-dot"></span>
+
+              <span id="resultFollowLabel">Đang theo dõi</span>
+
+            </button>
+
+          </div>
+
+          <div id="resultArea" class="log-tall-sm result-stream" aria-live="polite">
+
+            <div class="result-empty">
+
+              <strong>Chưa có kết quả</strong>
+
+              <span>Mỗi tài khoản sẽ xuất hiện thành một mục riêng khi hoàn tất.</span>
+
+            </div>
+
+          </div>
+
+          <div class="help log-help">Cuộn lên để giữ nguyên vị trí đọc. Kết quả mới vẫn được ghi nhận, không làm chậm bot.</div>
+
+        </section>
+
+      </div>
+
+    </div>
+
+
+
+    <div id="updateNotice" class="hidden">
+
+      <div id="updateTitle">Có bản cập nhật</div>
+
+      <div id="updateNotes"></div>
+
+      <button onclick="doUpdate()">Cập nhật ngay</button>
+
+    </div>
+
+
+
+  </div>
+
+
+
+  <script src="pool-view.js"></script>
+
+  <script src="app.js?v=23-pool-captcha"></script>
+
+</body>
+
+</html>
+
